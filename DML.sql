@@ -1,0 +1,1 @@
+-- Insert, Update, Delete, Lock, Call, Explain Plan

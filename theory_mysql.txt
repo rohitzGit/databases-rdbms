@@ -1,0 +1,247 @@
+Credentials MySql Workbench
+	root
+	Ro@mysql@081
+
+
+CREATE SCHEMA new_schema DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+SELECT * FROM INFORMATION_SCHEMA.SCHEMATA;
+
+CREATE TABLE new_schema.test_t (
+	id int PRIMARY KEY COMMENT 'This is a PK'
+);
+
+SHOW FULL COLUMNS FROM new_schema.test_t;
+
+DROP TABLE new_schema.test_t;
+
+TRUNCATE new_schema.test_t;
+
+ALTER TABLE t1
+ADD COLUMN c1 INT NULL AFTER c2;
+
+ALTER TABLE t1
+CHANGE COLUMN col1 col1 INT(11) NOT NULL AUTO INCREMENT,
+CHANGE COLUMN name user_name VARCHAR(45) NOT NULL DEFAULT 'No Name';
+
+UPDATE `new_schema`.`users` SET `name` = 'Andy', `age` = 100 WHERE `id` = 2;
+
+DELETE FROM `new_schema`.`users` WHERE `id` = 1;
+
+ALTER TABLE `new_schema`.`users` 
+ADD COLUMN `contact` JSON NULL AFTER `id`;
+
+
+id	name	contact
+1	John	{"phone": "123-456", "address": "New York"}
+2	May		{"phone": "888-99", "address": "LA"}
+3	Tim		{"phone": "1236"}
+4	Jay		{"phone": "321-6", "address": "Boston"}
+
+SELECT `id`, JSON_EXTRACT(col_name, '$.phone') AS phone
+FROM `new_schema`.`users`;
+
+SELECT `id`, JSON_UNQUOTE(JSON_EXTRACT(contact, '$.phone')) AS phone
+FROM `new_schema`.`users`;
+
+SELECT `id`, JSON_UNQUOTE(JSON_EXTRACT(contact, '$.phone')) AS phone
+FROM `new_schema`.`users`
+WHERE JSON_EXTRACT(contact, '$.phone') like '%456%';
+
+INSERT INTO `new_schema`.`users` (`id`, `name`, `contact`) VALUES (5, 'Harry', JSON_OBJECT('phone', '1231123', 'address', 'Miami'));
+
+UPDATE `new_schema`.`users` SET `contact` = JSON_SET(contact, '$.phone', '6666', '$.phone_2', '888') WHERE `id` = 2;
+
+if the column set to JSON_SET is not in the original JSON column name, a new pair will be generated directly, which is a very convenient setting. Likewise, since we did not include "address" while updating the JSON, the previous address was retained.
+
+SELECT * FROM `new_schema`.`users` LIMIT 3 OFFSET 1;
+	limiting the number of items displayed and skipping the first specified number of items.
+
+many SQL programs provide paging functions by dynamically generating the numbers after OFFSET. For example, if the requirement is that every 3 rows is a page, one option is to dynamically generate the following queries:
+SELECT * FROM `new_schema`.`users` LIMIT 3 OFFSET 0;
+SELECT * FROM `new_schema`.`users` LIMIT 3 OFFSET 3;
+SELECT * FROM `new_schema`.`users` LIMIT 3 OFFSET 6;
+
+SELECT COUNT(*) AS `age_count`, `age`
+FROM `new_schema`.`users`
+GROUP BY age
+ORDER BY `age_count`;
+
+INT: BIGINT, INT, MEDIUMINT, SMALLINT, TINYINT
+DOUBLE, FLOAT -> not precise; DECIMAL(5,2) -> precise 
+DATE, MONTH, YEAR
+DATETIME -> not limited
+TIMESTAMP -> limited between 1970-01-01 00:00:01 and 2038-01-19 03:14:07
+CHAR -> fixed length value
+VARCHAR(n) -> limit should not exceed 'n'
+TEXT -> length unknown
+LONGTEXT -> length unknown
+BLOB 
+	-> IMG/VIDEOS -> plain text, boolean values, numbers -> large unstructured data but not commonly used due to complexity
+	-> they may contain any data type , pdf, zip, exe etc.
+	-> search not possible directly on this column; a database can include additional fields containing searchable metadata for the BLOB.
+	-> Storing files as BLOBs in a database also significantly increases the size of the database. 
+		Binary BLOBs require much more storage space than plain text and numbers, and storing large BLOBs can slow down database queries. 
+		Instead of storing BLOBs in a database directly, many administrators set aside separate cloud storage for media files and insert links to those files into database records. 
+		This makes sharing, updating, and editing files easier (since the changes do not need to go through the database) but adds complexity by requiring separate backups and permissions management.
+	SQL 
+		->  MySQL supports four types 
+			— TINYBLOB for files under 255 bytes, 
+			- BLOB for files up to 64 kilobytes, 
+			- MEDIUMBLOB for files up to 16 megabytes, 
+			- and LONGBLOB for files up to 4 gigabytes.
+BINARY -> IMG/VIDEOS -> 
+BOOLEAN -> 
+JSON -> 
+
+Preceedence :
+INTERVAL
+BINARY, COLLATE
+!
+- (unary minus), ~ (unary bit inversion)
+^
+*, /, DIV, %, MOD
+-, +
+<<, >>
+&
+|
+= (comparison), <=>, >=, >, <=, <, <>, !=, IS, LIKE, REGEXP, IN, MEMBER OF
+BETWEEN, CASE, WHEN, THEN, ELSE
+NOT
+AND, &&
+XOR
+OR, ||
+= (assignment), :=
+
+
+-> the WHERE keyword only supports columns that already exist in this table
+	SQL supports a special keyword HAVING to help developers filter the conditions for combined columns
+	if we only use HAVING, as the amount of data increases, the performance may be much slower than WHERE in different situations, which will affect the efficiency of our database and relative application. So, it is not good to just use HAVING instead of WHERE
+
+
+many to many relationship requires a third relationship tables
+
+join vs subquery??
+	->  a table often has dozens of columns.
+	If JOIN is used to combine tables according to certain conditions, it may cause many redundant columns to be fetched.
+
+foregin key constraint modes : update and delete 
+	-> default constraint mode is NO ACTION
+	-> refrential actions : NO ACTIION and RESTRICT
+	ALTER TABLE `new_schema`.`orders`
+    ADD CONSTRAINT `orders_user_id_key`
+    FOREIGN KEY (`user_id`)
+    REFERENCES `new_schema`.`users` (`id`)
+    ON DELETE NO ACTION
+    ON UPDATE RESTRICT;
+	CASCADE: Dynamically adjust the foreign key of another table when the constraint is triggered. For example, if the user's id is changed to 6, the user_id of the corresponding order records will also be updated to 6 together.
+	SET NULL: You can control to dynamically set the foreign key of another table to null when the behavior occurs. For example, if the user's id is changed to 6, the user_id corresponding to the order records will be changed to null.
+
+ACID
+	-> Consistency: 
+		-> Transactions (for data Consistency) -> all or none; no partial changes acceptable
+			- multiple statements can be executed one-by-one
+			- all statements will belong to one transaction state
+			- all statements are marked as transactional : execution results will not be stored until COMMIT is found
+
+		START TRANSACTION;
+
+SELECT `new_schema`.`products` WHERE id = 5;
+UPDATE `new_schema`.`products` SET `price` = '500' WHERE id = 5;
+
+IF (@correct) THEN
+  COMMIT;
+ELSE
+  ROLLBACK;
+END IF;
+
+INDEX
+	-> The index is responsible for the performance optimization of the database, so the proper use of the index can help the database improve performance substantially and the related user experience.
+	-> to mark specific columns in the table and extract them to be stored additionally and in an organized manner.
+	-> the index is not effective in all situations, mainly when data exceeds 100,000 records in a single table, the user will gradually feel the difference in performance. 
+		Or, in a transaction or function with a huge number of SQL statements, the difference in performance will again be noticeable to the user.
+	-> Assuming that our table will have high-frequency data writing actions, it will cause the database to build an index for the table frequently, which requires operation time.
+	-> Categories
+		-> PK
+			- When setting the PK for the database, an index is also created, and PRIMARY KEY is used as the index category. The advantage of using this category is that when we use the JOIN to combine two tables together, it will effectively increase the processing speed.
+		-> UNIQUE index
+			- Using UNIQUE INDEX is similar to the column unique setting we learned in the past, and it is often created together. After using UNIQUE INDEX, a constraint will be created to limit the column to only store unique values, avoid duplication, and improve the efficiency of index usage.
+		-> FULL TEXT
+			- keyword search
+			- not all languages support full text indexes
+	
+	Six Principles About Index Best Pratices
+	-> When using an index, we recommend mastering these six principles so that the index can play a high-quality role in our code. 
+	-> 1. Try to choose UNIQUE INDEX, otherwise, use KEY. 
+	-> 2. Add an index for the column that is often referenced by complex operations, such as GROUP BY. 
+	-> 3. Index the hotspot column that is frequently queried in WHERE, but make sure that the differences in the column values are large enough. For example, adding an index to the identify_number column is better than adding an index to country_of_birth. 
+	-> 4. The index actually uses the disk space, so pay attention to the space used in the hard disk. 
+	-> 5. Index the column with a small value. For example, the index title of the article is better than the index content of the article 
+	-> 6. Try to avoid index on columns with NULL, which may affect the query efficiency.
+
+
+# NO FULL JOIN IN MYSQL
+
+SELECT
+    t.employee_id
+FROM
+(
+    SELECT * FROM Employees e LEFT JOIN Salaries s USING(employee_id)
+    UNION
+    SELECT * FROM Employees e RIGHT JOIN Salaries s USING(employee_id)
+) t
+WHERE 1=1
+AND (t.name IS NULL OR t.salary IS NULL)
+ORDER BY t.employee_id
+
+
+
+SELECT
+    u.name,
+    IFNULL(SUM(r.distance),0) as travelled_distance
+FROM
+    Users u
+LEFT JOIN Rides r ON u.id=r.user_id
+GROUP BY u.id
+ORDER BY travelled_distance DESC, u.name ASC
+
+
+SELECT
+    person_id,
+    CONCAT(name, '(', SUBSTR(profession, 1, 1), ')') as name
+FROM
+    Person
+ORDER BY person_id DESC
+
+cross join on all columns 
+SELECT 
+	e.symbol as metal,
+    e1.symbol as nonmetal
+FROM
+	Elements e,
+    Elements e1
+WHERE e.type='Metal' AND e1.type='Nonmetal'
+
+select  a.team_name  home_team, b.team_name away_team
+from teams a inner join teams b on a.team_name != b.team_name 
+
+# Write your MySQL query statement below
+
+SELECT
+    s.user_id,
+    SUM(s.quantity*p.price) AS spending
+FROM
+    Sales s
+LEFT JOIN Product p ON s.product_id = p.product_id
+GROUP BY s.user_id
+ORDER BY spending DESC
+
+Consecutive available seats
+SELECT
+	DISTINCT a.seat_id
+FROM
+	Cinema a, Cinema b
+WHERE 1=1
+AND ABS(a.seat_id-b.seat_id)=1
+AND a.free=1 AND b.free=1
+ORDER BY a.seat_id
