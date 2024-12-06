@@ -1,0 +1,1 @@
+-- Create, Drop, Alter, Truncate, Comment, Rename
